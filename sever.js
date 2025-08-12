@@ -72,7 +72,9 @@ app.post("/api/chats", async (req, res) => {
         }
       );
     }
-    res.status(201).send(savedChat._id);
+    res.status(201).send({_id:savedChat._id,
+      messageId:savedChat.history[0].messageId});
+    // res.status(201).send(savedChat._id);
   } catch (err) {
     console.log(err);
     res.status(500).send("Error creating chat!");
@@ -122,7 +124,7 @@ app.get("/api/chats/:id", async (req, res) => {
 
 
 app.put("/api/chats/:id", async (req, res) => {
-  const { question, answer, files, userId } = req.body;
+  const { question, answer, files, userId,messageId } = req.body;
 
   if (!userId) {
     return res.status(400).send("User ID is required!");
@@ -132,7 +134,7 @@ app.put("/api/chats/:id", async (req, res) => {
     ...(question || (files && files.length > 0)
       ? [{ role: "user", parts: [{ text: question || "" }], ...(files && { files }) }]
       : []),
-    { role: "model", parts: [{ text: answer }] },
+    { role: "model", parts: [{ text: answer }], messageId },
   ];
 
   try {
@@ -177,7 +179,10 @@ app.put("/api/chats/:id/user", async (req, res) => {
   }
 
   try {
+    const messageId = new mongoose.Types.ObjectId();
+    
     const userMessage = {
+      messageId: messageId,
       role: "user",
       parts: [{ text: question || "" }],
       timestamp: new Date(),
@@ -203,7 +208,7 @@ app.put("/api/chats/:id/user", async (req, res) => {
       }
     );
 
-    res.status(200).send(updatedChat);
+    res.status(200).send(messageId);
   } catch (err) {
     console.log(err);
     res.status(500).send("Error adding user message!");
@@ -212,7 +217,9 @@ app.put("/api/chats/:id/user", async (req, res) => {
 
 // NEW: Save AI response only
 app.put("/api/chats/:id/ai", async (req, res) => {
-  const { answer, userId } = req.body;
+  const { answer, userId, messageId } = req.body;
+  console.log(messageId);
+  
 
   if (!userId) {
     return res.status(400).send("User ID is required!");
@@ -226,7 +233,8 @@ app.put("/api/chats/:id/ai", async (req, res) => {
     const aiMessage = {
       role: "model",
       parts: [{ text: answer }],
-      timestamp: new Date()
+      timestamp: new Date(),
+      messageId
     };
 
     const updatedChat = await Chat.updateOne(

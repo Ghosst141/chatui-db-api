@@ -7,7 +7,34 @@ const fileAttachmentSchema = new mongoose.Schema({
   lastModified: { type: Number },
 }, { _id: false });
 
-
+const messageSchema = new mongoose.Schema({
+  messageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: () => new mongoose.Types.ObjectId()
+  },
+  role: {
+    type: String,
+    enum: ["user", "model"],
+    required: true,
+  },
+  parts: [
+    {
+      text: {
+        type: String,
+        required: false, // Allow empty text when files are present
+        default: "",
+      },
+    },
+  ],
+  files: {
+    type: [fileAttachmentSchema],
+    required: false,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now, // Each message gets its own timestamp
+  }}, { _id: false });
+  
 const chatSchema = new mongoose.Schema(
   {
     userId: {
@@ -15,34 +42,7 @@ const chatSchema = new mongoose.Schema(
       required: true,
     },
     history: [
-      {
-        messageId: {
-          type: mongoose.Schema.Types.ObjectId,
-          default: () => new mongoose.Types.ObjectId()
-        },
-        role: {
-          type: String,
-          enum: ["user", "model"],
-          required: true,
-        },
-        parts: [
-          {
-            text: {
-              type: String,
-              required: false, // Allow empty text when files are present
-              default: "",
-            },
-          },
-        ],
-        files: {
-          type: [fileAttachmentSchema],
-          required: false,
-        },
-        timestamp: {
-          type: Date,
-          default: Date.now, // Each message gets its own timestamp
-        },
-      },
+      messageSchema
     ],
   },
   { timestamps: true }
