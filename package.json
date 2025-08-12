@@ -1,0 +1,22 @@
+{
+  "name": "sarver",
+  "version": "1.0.0",
+  "main": "sever.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon sever.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "imagekit": "^6.0.0",
+    "mongoose": "^8.17.0",
+    "nodemon": "^3.1.10",
+    "path": "^0.12.7",
+    "url": "^0.11.4"
+  },
+  "description": ""
+}
