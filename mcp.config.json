@@ -1,0 +1,12 @@
+{
+  "servers": [
+    {
+      "name": "Weather MCP",
+      "url": "http://127.0.0.1:8000/mcp"
+    },
+    {
+      "name": "Job Portal MCP",
+      "url": "http://127.0.0.1:4000/mcp"
+    }
+  ]
+}

@@ -6,6 +6,8 @@ import ImageKit from "imagekit";
 import mongoose from "mongoose";
 import Chat from "./models/chat.js";
 import UserChats from "./models/userChats.js";
+import { askModel, connectMCP } from "./newClient.js";
+import fs from "fs";
 
 const port = 3000;
 const app = express();
@@ -218,8 +220,6 @@ app.put("/api/chats/:id/user", async (req, res) => {
 // NEW: Save AI response only
 app.put("/api/chats/:id/ai", async (req, res) => {
   const { answer, userId, messageId } = req.body;
-  console.log(messageId);
-  
 
   if (!userId) {
     return res.status(400).send("User ID is required!");
@@ -287,6 +287,40 @@ app.delete("/api/chats/:id", async (req, res) => {
 });
 
 
+app.post("/api/mcp/connect", async (req, res) => {
+  const {url}=req.body;
+  try {
+    const connection=await connectMCP(url);
+    if(connection.success){
+      res.status(200).send({success:true});
+    }
+    else{
+      res.status(400).send({success:false, error: "Failed to connect to MCP"});
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({success:false, error: error.message || error});
+  }
+})
+
+
+app.post("/api/mcp/askModel", async (req, res) => {
+  const { prompt, model, apiKey } = req.body;
+
+  try {
+    const result = await askModel(prompt, model, apiKey);
+    res.status(200).send(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ success: false, error: error.message || error });
+  }
+ 
+});
+
+app.get('/api/mcp/servers', async (req,res)=>{
+  const servers = JSON.parse(fs.readFileSync("mcp.config.json", "utf-8")).servers;
+  res.json(servers);
+});
 
 mongoose.connect(MONGO_URI)
   .then(() => {

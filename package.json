@@ -10,13 +10,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@langchain/anthropic": "^0.3.26",
+    "@langchain/core": "^0.3.72",
+    "@langchain/google-genai": "^0.2.16",
+    "@langchain/groq": "^0.2.3",
+    "@langchain/openai": "^0.6.9",
+    "@modelcontextprotocol/sdk": "^1.17.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "imagekit": "^6.0.0",
     "mongoose": "^8.17.0",
     "nodemon": "^3.1.10",
     "path": "^0.12.7",
-    "url": "^0.11.4"
+    "url": "^0.11.4",
+    "zod": "^4.0.17"
   },
   "description": ""
 }
