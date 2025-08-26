@@ -8,6 +8,7 @@ import Chat from "./models/chat.js";
 import UserChats from "./models/userChats.js";
 import { askModel, connectMCP } from "./newClient.js";
 import fs from "fs";
+import { log } from "console";
 
 const port = 3000;
 const app = express();
@@ -305,10 +306,11 @@ app.post("/api/mcp/connect", async (req, res) => {
 
 
 app.post("/api/mcp/askModel", async (req, res) => {
-  const { prompt, model, apiKey } = req.body;
+  const { prompt, model, apiKey, history, files } = req.body;
 
   try {
-    const result = await askModel(prompt, model, apiKey);
+    // console.log("Received files in request:", files);
+    const result = await askModel(prompt, files, model, apiKey, history);
     res.status(200).send(result);
   } catch (error) {
     console.log(error);

@@ -8,6 +8,7 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { tool, DynamicStructuredTool } from "@langchain/core/tools";
+import { attachmentsToContent } from "./services.js";
 
 
 let mcpClient = null;
@@ -26,9 +27,7 @@ async function connectMCP(url) {
     } else {
       console.log("already used url", currentMCPUrl);
       console.log("trying to connect to", url);
-
-      if (currentMCPUrl !== url) {
-        await mcpClient.disconnect();
+      if (currentMCPUrl && currentMCPUrl !== url) {
         mcpClient = new Client({ name: "MCP Client", version: "1.0.0" });
         await mcpClient.connect(transport);
         currentMCPUrl = url;
@@ -40,11 +39,12 @@ async function connectMCP(url) {
     return { success: true, client: mcpClient };
   } catch (error) {
     console.error("Error connecting to MCP:", error);
+    mcpClient = null;
     return { success: false, error: error.message || error };
   }
 }
 
-async function getTools(modelType) {
+async function getTools() {
   if (!mcpClient) {
     throw new Error("MCP Client is not connected.");
   }
@@ -54,41 +54,32 @@ async function getTools(modelType) {
     return [];
   }
 
-  if (modelType === "gemini") {
-    // Wrap in LangChain DynamicStructuredTool
-    return mcpTools.map(
-      (t) =>
-        new DynamicStructuredTool({
-          name: t.name,
-          description: t.description || "",
-          schema: z.object(
-            Object.fromEntries(
-              Object.entries(t.inputSchema?.properties || {}).map(([k, v]) => [
-                k,
-                z.string().describe(v.description || ""),
-              ])
-            )
-          ),
-          func: async (args) => {
-            const result = await mcpClient.callTool({
-              name: t.name,
-              arguments: args,
-            });
-            return result?.content?.[0]?.text ?? JSON.stringify(result);
-          },
-        })
-    );
-  }
-
-  // Default OpenAI-style tools
-  return mcpTools.map((t) => ({
-    name: t.name,
-    description: t.description || "",
-    parameters: t.inputSchema || { type: "object", properties: {} },
-  }));
+  return mcpTools.map(
+    (t) =>
+      new DynamicStructuredTool({
+        name: t.name,
+        description: t.description || "",
+        schema: z.object(
+          Object.fromEntries(
+            Object.entries(t.inputSchema?.properties || {}).map(([k, v]) => [
+              k,
+              z.string().describe(v.description || ""),
+            ])
+          )
+        ),
+        func: async (args) => {
+          const result = await mcpClient.callTool({
+            name: t.name,
+            arguments: args,
+          });
+          return result?.content?.[0]?.text ?? JSON.stringify(result);
+        },
+      })
+  );
 }
 
-async function askModel(prompt, modelName, apiKey) {
+
+async function askModel(prompt, files, modelName, apiKey, history = []) {
   if (!mcpClient) {
     throw new Error("MCP Client is not connected. Please connect first.");
   }
@@ -114,18 +105,34 @@ async function askModel(prompt, modelName, apiKey) {
     throw new Error(`Unsupported model: ${modelName}`);
   }
 
-  const isGemini = geminiModels.includes(modelName);
-  const mcpTools = await getTools(isGemini ? "gemini" : "default");
+  const mcpTools = await getTools();
 
   const modelWithTools =
     mcpTools.length > 0 ? chatModel.bindTools(mcpTools) : chatModel;
 
-  const messages = [new HumanMessage(prompt)];
+
+  let messages = history.map((m) => {
+    if (m.sender === "user") {
+      return new HumanMessage(m.text);
+    } else {
+      return new AIMessage(m.text);
+    }
+  });
+
+  const attachments = await attachmentsToContent(files);
+  messages.push(new HumanMessage(new HumanMessage({
+    content: [
+      { type: "text", text: prompt },
+      ...attachments,
+    ],
+  })));
+  // console.log("Initial messages:", messages);
 
   const MAX_TURNS = 5;
   for (let i = 0; i < MAX_TURNS; i++) {
     const response = await modelWithTools.invoke(messages);
     messages.push(response);
+    // console.log("Response messages:", messages);
 
     if (!response.tool_calls || response.tool_calls.length === 0) {
       return {
